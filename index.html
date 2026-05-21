@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cortador de archivos por filas</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">Herramienta local</p>
+      <h1 id="page-title">Cortador de archivos por filas</h1>
+      <p class="description">
+        Sube un archivo Excel o CSV, define cuántas filas tendrá cada parte y descarga los archivos CSV resultantes.
+      </p>
+    </section>
+
+    <section class="tool-panel" aria-label="Formulario para dividir archivos">
+      <div class="field-group">
+        <label for="file-input">Archivo .xlsx, .xls o .csv</label>
+        <input id="file-input" type="file" accept=".xlsx,.xls,.csv">
+      </div>
+
+      <div class="field-group">
+        <label for="rows-input">Filas por archivo</label>
+        <input id="rows-input" type="number" min="1" step="1" placeholder="Ej: 2000">
+      </div>
+
+      <button id="process-button" type="button">Procesar archivo</button>
+    </section>
+
+    <section class="status-panel" aria-live="polite" aria-label="Mensajes de estado">
+      <h2>Estado</h2>
+      <div id="status-messages" class="messages">
+        <p class="message info">Selecciona un archivo y define el número de filas por CSV.</p>
+      </div>
+    </section>
+
+    <section class="downloads-panel" aria-label="Descargas generadas">
+      <div class="downloads-header">
+        <h2>Descargas</h2>
+        <span id="download-count" class="download-count">0 archivos</span>
+      </div>
+      <div id="downloads-list" class="downloads-list">
+        <p class="empty-state">Los enlaces aparecerán aquí después del procesamiento.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
