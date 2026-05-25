@@ -5,11 +5,15 @@ const processButton = document.getElementById("process-button");
 const statusMessages = document.getElementById("status-messages");
 const downloadsList = document.getElementById("downloads-list");
 const downloadCount = document.getElementById("download-count");
+const downloadAllButton = document.getElementById("download-all-button");
 
 let generatedUrls = [];
+let generatedDownloadItems = [];
+let generatedArchiveName = "archivos_csv.zip";
 
 fileInput.addEventListener("change", handleFileSelection);
 processButton.addEventListener("click", processSelectedFile);
+downloadAllButton.addEventListener("click", downloadAllFiles);
 
 function handleFileSelection() {
   clearDownloads();
@@ -61,6 +65,7 @@ async function processSelectedFile() {
     const downloadItems = createCsvDownloads(fileBaseName, header, parts);
     const messages = buildSuccessMessages(file, workbook, dataRows.length, downloadItems.length);
 
+    generatedArchiveName = `${fileBaseName}_partes_csv.zip`;
     renderDownloads(downloadItems);
     showMessages(messages);
   } catch (error) {
@@ -94,6 +99,12 @@ function validateInputs() {
 function ensureSheetJsIsAvailable() {
   if (typeof XLSX === "undefined") {
     throw new Error("No se pudo cargar la librería SheetJS/xlsx. Revisa tu conexión a internet.");
+  }
+}
+
+function ensureZipLibraryIsAvailable() {
+  if (typeof JSZip === "undefined") {
+    throw new Error("No se pudo cargar la librería JSZip. Revisa tu conexión a internet.");
   }
 }
 
@@ -170,6 +181,7 @@ function createCsvDownloads(fileBaseName, header, parts) {
     return {
       fileName,
       rowCount: partRows.length,
+      blob,
       url
     };
   });
@@ -224,7 +236,9 @@ function buildSuccessMessages(file, workbook, totalDataRows, totalFiles) {
 
 function renderDownloads(downloadItems) {
   downloadsList.innerHTML = "";
+  generatedDownloadItems = downloadItems;
   downloadCount.textContent = `${downloadItems.length} ${downloadItems.length === 1 ? "archivo" : "archivos"}`;
+  updateDownloadAllButton();
 
   downloadItems.forEach((item) => {
     const link = document.createElement("a");
@@ -244,6 +258,46 @@ function renderDownloads(downloadItems) {
   });
 }
 
+async function downloadAllFiles() {
+  if (!generatedDownloadItems.length) {
+    showMessages([{ text: "Primero procesa un archivo para generar descargas.", type: "warning" }]);
+    return;
+  }
+
+  setDownloadAllState(true);
+
+  try {
+    ensureZipLibraryIsAvailable();
+
+    const zip = new JSZip();
+    generatedDownloadItems.forEach((item) => {
+      zip.file(item.fileName, item.blob);
+    });
+
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    triggerDownload(zipBlob, generatedArchiveName);
+    showMessages([{ text: `Descarga iniciada: ${generatedArchiveName}`, type: "success" }]);
+  } catch (error) {
+    showMessages([{ text: error.message || "No fue posible descargar todos los archivos.", type: "error" }]);
+  } finally {
+    setDownloadAllState(false);
+  }
+}
+
+function triggerDownload(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.style.display = "none";
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function showMessages(messages) {
   statusMessages.innerHTML = "";
 
@@ -258,13 +312,28 @@ function showMessages(messages) {
 function clearDownloads() {
   generatedUrls.forEach((url) => URL.revokeObjectURL(url));
   generatedUrls = [];
+  generatedDownloadItems = [];
+  generatedArchiveName = "archivos_csv.zip";
   downloadsList.innerHTML = '<p class="empty-state">Los enlaces aparecerán aquí después del procesamiento.</p>';
   downloadCount.textContent = "0 archivos";
+  updateDownloadAllButton();
 }
 
 function setProcessingState(isProcessing) {
   processButton.disabled = isProcessing;
   processButton.textContent = isProcessing ? "Procesando..." : "Procesar archivo";
+  updateDownloadAllButton();
+}
+
+function setDownloadAllState(isDownloading) {
+  downloadAllButton.dataset.loading = isDownloading ? "true" : "false";
+  downloadAllButton.textContent = isDownloading ? "Preparando ZIP..." : "Descargar todo";
+  updateDownloadAllButton();
+}
+
+function updateDownloadAllButton() {
+  const isDownloading = downloadAllButton.dataset.loading === "true";
+  downloadAllButton.disabled = isDownloading || processButton.disabled || !generatedDownloadItems.length;
 }
 
 function getFileExtension(fileName) {

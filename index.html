@@ -3,52 +3,80 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cortador de archivos por filas</title>
+  <title>Cortador de archivos Excel y CSV</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main class="app-shell">
     <section class="intro" aria-labelledby="page-title">
-      <p class="eyebrow">Herramienta local</p>
-      <h1 id="page-title">Cortador de archivos por filas</h1>
-      <p class="description">
-        Sube un archivo Excel o CSV, define cuántas filas tendrá cada parte y descarga los archivos CSV resultantes.
-      </p>
-    </section>
-
-    <section class="tool-panel" aria-label="Formulario para dividir archivos">
-      <div class="field-group">
-        <label for="file-input">Archivo .xlsx, .xls o .csv</label>
-        <input id="file-input" type="file" accept=".xlsx,.xls,.csv">
+      <div class="intro-copy">
+        <p class="eyebrow">Herramienta local</p>
+        <h1 id="page-title">Divide archivos Excel y CSV en partes listas para descargar</h1>
+        <p class="description">
+          Carga tu archivo, define el tamaño de cada bloque y genera CSV separados sin enviar datos a servidores.
+        </p>
       </div>
-
-      <div class="field-group">
-        <label for="rows-input">Filas por archivo</label>
-        <input id="rows-input" type="number" min="1" step="1" placeholder="Ej: 2000">
-      </div>
-
-      <button id="process-button" type="button">Procesar archivo</button>
-    </section>
-
-    <section class="status-panel" aria-live="polite" aria-label="Mensajes de estado">
-      <h2>Estado</h2>
-      <div id="status-messages" class="messages">
-        <p class="message info">Selecciona un archivo y define el número de filas por CSV.</p>
+      <div class="privacy-badge" aria-label="Procesamiento local en el navegador">
+        <span class="badge-icon" aria-hidden="true"></span>
+        <span>
+          <strong>100% local</strong>
+          <small>El archivo se procesa en tu navegador</small>
+        </span>
       </div>
     </section>
 
-    <section class="downloads-panel" aria-label="Descargas generadas">
-      <div class="downloads-header">
-        <h2>Descargas</h2>
-        <span id="download-count" class="download-count">0 archivos</span>
+    <div class="workspace-grid">
+      <section class="tool-panel" aria-label="Formulario para dividir archivos">
+        <div class="panel-heading">
+          <p class="section-kicker">Configuración</p>
+          <h2>Prepara el corte</h2>
+        </div>
+
+        <div class="field-group file-field">
+          <label for="file-input">Archivo .xlsx, .xls o .csv</label>
+          <input id="file-input" type="file" accept=".xlsx,.xls,.csv">
+        </div>
+
+        <div class="field-group">
+          <label for="rows-input">Filas por archivo</label>
+          <input id="rows-input" type="number" min="1" step="1" placeholder="Ej: 2000">
+        </div>
+
+        <button id="process-button" class="primary-button" type="button">Procesar archivo</button>
+      </section>
+
+      <div class="results-stack">
+        <section class="status-panel" aria-live="polite" aria-label="Mensajes de estado">
+          <div class="panel-heading compact">
+            <p class="section-kicker">Progreso</p>
+            <h2>Estado</h2>
+          </div>
+          <div id="status-messages" class="messages">
+            <p class="message info">Selecciona un archivo y define el número de filas por CSV.</p>
+          </div>
+        </section>
+
+        <section class="downloads-panel" aria-label="Descargas generadas">
+          <div class="downloads-header">
+            <div class="panel-heading compact">
+              <p class="section-kicker">Resultado</p>
+              <h2>Descargas</h2>
+            </div>
+            <div class="downloads-actions">
+              <span id="download-count" class="download-count">0 archivos</span>
+              <button id="download-all-button" class="secondary-button" type="button" disabled>Descargar todo</button>
+            </div>
+          </div>
+          <div id="downloads-list" class="downloads-list">
+            <p class="empty-state">Los enlaces aparecerán aquí después del procesamiento.</p>
+          </div>
+        </section>
       </div>
-      <div id="downloads-list" class="downloads-list">
-        <p class="empty-state">Los enlaces aparecerán aquí después del procesamiento.</p>
-      </div>
-    </section>
+    </div>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

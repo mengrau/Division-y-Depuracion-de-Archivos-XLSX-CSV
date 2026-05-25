@@ -6,7 +6,7 @@ Todo el procesamiento ocurre en el navegador. La herramienta no sube archivos a 
 
 ## Archivos del proyecto
 
-- `index.html`: estructura de la interfaz y carga de SheetJS/xlsx desde CDN.
+- `index.html`: estructura de la interfaz y carga de SheetJS/xlsx y JSZip desde CDN.
 - `styles.css`: estilos responsive de la página.
 - `script.js`: validación, lectura del archivo, división por filas y generación de CSV.
 - `README.md`: instrucciones de uso y despliegue.
@@ -17,7 +17,7 @@ Todo el procesamiento ocurre en el navegador. La herramienta no sube archivos a 
 2. Abre `index.html` directamente en tu navegador.
 3. Selecciona un archivo `.xlsx`, `.xls` o `.csv`.
 4. Indica cuántas filas debe tener cada CSV resultante.
-5. Pulsa **Procesar archivo** y descarga los archivos generados.
+5. Pulsa **Procesar archivo** y descarga cada CSV o usa **Descargar todo** para obtener un ZIP con todos los archivos.
 
 También puedes usar un servidor local simple:
 
@@ -42,7 +42,7 @@ http://localhost:8000
 
 ## Funcionamiento
 
-La app usa SheetJS/xlsx para leer el archivo desde el navegador. La primera fila se trata como encabezado y se incluye de nuevo en cada CSV generado. Si el archivo tiene varias hojas, solo se procesa la primera y se muestra un aviso.
+La app usa SheetJS/xlsx para leer el archivo desde el navegador y JSZip para empaquetar todas las partes en una sola descarga. La primera fila se trata como encabezado y se incluye de nuevo en cada CSV generado. Si el archivo tiene varias hojas, solo se procesa la primera y se muestra un aviso.
 
 Los CSV se generan con separador coma, codificación UTF-8 y BOM para facilitar la apertura en Excel con tildes, ñ y caracteres especiales. Los valores con comas, comillas o saltos de línea se escapan correctamente.
 
