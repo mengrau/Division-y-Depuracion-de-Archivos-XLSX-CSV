@@ -73,6 +73,61 @@
         </section>
       </div>
     </div>
+    <section class="clients-module" aria-labelledby="clients-title">
+      <div class="panel-heading">
+        <p class="section-kicker">Clientes CSV</p>
+        <h2 id="clients-title">Unir y depurar clientes CSV</h2>
+      </div>
+
+      <div class="clients-grid">
+        <section class="client-panel" aria-label="Unir CSV de clientes">
+          <div class="panel-heading compact">
+            <p class="section-kicker">Paso 1</p>
+            <h3>Unir CSV de clientes</h3>
+          </div>
+
+          <div class="field-group file-field">
+            <label for="client-csv-input">Archivos CSV de clientes</label>
+            <input id="client-csv-input" type="file" accept=".csv" multiple>
+          </div>
+
+          <div class="button-row">
+            <button id="merge-clients-button" class="primary-button" type="button">Unir y quitar duplicados</button>
+            <button id="download-clients-button" class="secondary-button" type="button" disabled>Descargar clientes únicos</button>
+          </div>
+
+          <div id="clients-summary" class="summary-box" aria-live="polite">
+            <p class="empty-state">Carga varios CSV para generar la lista depurada.</p>
+          </div>
+        </section>
+
+        <section class="client-panel" aria-label="Eliminar clientes de archivo maestro">
+          <div class="panel-heading compact">
+            <p class="section-kicker">Paso 2</p>
+            <h3>Eliminar clientes de archivo maestro</h3>
+          </div>
+
+          <div class="field-group file-field">
+            <label for="master-file-input">Archivo maestro .csv, .xlsx o .xls</label>
+            <input id="master-file-input" type="file" accept=".csv,.xlsx,.xls">
+          </div>
+
+          <div id="master-column-group" class="field-group hidden">
+            <label for="master-column-select">Columna para comparar</label>
+            <select id="master-column-select"></select>
+          </div>
+
+          <div class="button-row">
+            <button id="filter-master-button" class="primary-button" type="button">Eliminar clientes encontrados</button>
+            <button id="download-filtered-button" class="secondary-button" type="button" disabled>Descargar archivo filtrado</button>
+          </div>
+
+          <div id="master-summary" class="summary-box" aria-live="polite">
+            <p class="empty-state">Carga un archivo maestro después de generar clientes únicos.</p>
+          </div>
+        </section>
+      </div>
+    </section>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>

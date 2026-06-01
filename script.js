@@ -6,14 +6,34 @@ const statusMessages = document.getElementById("status-messages");
 const downloadsList = document.getElementById("downloads-list");
 const downloadCount = document.getElementById("download-count");
 const downloadAllButton = document.getElementById("download-all-button");
+const clientCsvInput = document.getElementById("client-csv-input");
+const mergeClientsButton = document.getElementById("merge-clients-button");
+const downloadClientsButton = document.getElementById("download-clients-button");
+const clientsSummary = document.getElementById("clients-summary");
+const masterFileInput = document.getElementById("master-file-input");
+const masterColumnGroup = document.getElementById("master-column-group");
+const masterColumnSelect = document.getElementById("master-column-select");
+const filterMasterButton = document.getElementById("filter-master-button");
+const downloadFilteredButton = document.getElementById("download-filtered-button");
+const masterSummary = document.getElementById("master-summary");
 
 let generatedUrls = [];
 let generatedDownloadItems = [];
 let generatedArchiveName = "archivos_csv.zip";
+let clientesDepurados = null;
+let clientesDepuradosBlob = null;
+let masterFileData = null;
+let filteredMasterBlob = null;
 
 fileInput.addEventListener("change", handleFileSelection);
 processButton.addEventListener("click", processSelectedFile);
 downloadAllButton.addEventListener("click", downloadAllFiles);
+clientCsvInput.addEventListener("change", handleClientCsvSelection);
+mergeClientsButton.addEventListener("click", handleMergeClients);
+downloadClientsButton.addEventListener("click", handleDownloadClients);
+masterFileInput.addEventListener("change", handleMasterFileSelection);
+filterMasterButton.addEventListener("click", handleFilterMasterFile);
+downloadFilteredButton.addEventListener("click", handleDownloadFilteredMaster);
 
 function handleFileSelection() {
   clearDownloads();
@@ -282,6 +302,416 @@ async function downloadAllFiles() {
   } finally {
     setDownloadAllState(false);
   }
+}
+
+function handleClientCsvSelection() {
+  resetClientResults();
+  resetFilteredMasterResults();
+
+  if (!clientCsvInput.files.length) {
+    mostrarMensajeResumen(clientsSummary, "No se han cargado archivos CSV de clientes.", "error");
+    return;
+  }
+
+  const files = Array.from(clientCsvInput.files);
+  const invalidFiles = files.filter((file) => getFileExtension(file.name) !== "csv");
+
+  if (invalidFiles.length) {
+    mostrarMensajeResumen(clientsSummary, "Todos los archivos de clientes deben tener extensión .csv.", "error");
+    return;
+  }
+
+  mostrarMensajeResumen(clientsSummary, `${files.length} ${files.length === 1 ? "archivo listo" : "archivos listos"} para unir.`, "info");
+}
+
+async function handleMergeClients() {
+  resetClientResults();
+  resetFilteredMasterResults();
+
+  if (!clientCsvInput.files.length) {
+    mostrarMensajeResumen(clientsSummary, "Debes cargar al menos un CSV de clientes.", "error");
+    return;
+  }
+
+  const files = Array.from(clientCsvInput.files);
+  const invalidFiles = files.filter((file) => getFileExtension(file.name) !== "csv");
+
+  if (invalidFiles.length) {
+    mostrarMensajeResumen(clientsSummary, "Los archivos seleccionados para clientes deben ser .csv.", "error");
+    return;
+  }
+
+  setClientProcessingState(true);
+  mostrarMensajeResumen(clientsSummary, "Uniendo clientes y quitando duplicados...", "info");
+
+  try {
+    ensureSheetJsIsAvailable();
+
+    clientesDepurados = await unirClientes(files);
+
+    if (!clientesDepurados.values.length) {
+      clientesDepurados = null;
+      mostrarMensajeResumen(clientsSummary, "No se encontraron clientes válidos debajo del encabezado.", "error");
+      return;
+    }
+
+    clientesDepuradosBlob = crearCsvBlob([
+      [clientesDepurados.header],
+      ...clientesDepurados.values.map((value) => [value])
+    ]);
+    downloadClientsButton.disabled = false;
+    renderClientSummary(clientesDepurados);
+  } catch (error) {
+    clientesDepurados = null;
+    mostrarMensajeResumen(clientsSummary, error.message || "No fue posible unir los CSV de clientes.", "error");
+  } finally {
+    setClientProcessingState(false);
+  }
+}
+
+function handleDownloadClients() {
+  if (!clientesDepuradosBlob) {
+    mostrarMensajeResumen(clientsSummary, "Primero genera la lista de clientes únicos.", "warning");
+    return;
+  }
+
+  triggerDownload(clientesDepuradosBlob, "clientes_unificados_sin_duplicados.csv");
+}
+
+async function handleMasterFileSelection() {
+  resetMasterFileData();
+  resetFilteredMasterResults();
+
+  if (!masterFileInput.files.length) {
+    mostrarMensajeResumen(masterSummary, "No se ha cargado ningún archivo maestro.", "error");
+    return;
+  }
+
+  const file = masterFileInput.files[0];
+  const extension = getFileExtension(file.name);
+
+  if (!allowedExtensions.includes(extension)) {
+    mostrarMensajeResumen(masterSummary, "El archivo maestro debe ser .csv, .xlsx o .xls.", "error");
+    return;
+  }
+
+  setMasterProcessingState(true, "Leyendo...");
+  mostrarMensajeResumen(masterSummary, "Leyendo archivo maestro...", "info");
+
+  try {
+    ensureSheetJsIsAvailable();
+
+    const workbook = await readWorkbook(file);
+    const worksheet = getFirstWorksheet(workbook);
+    const rows = normalizeRows(getRowsFromWorksheet(worksheet));
+    const header = rows[0];
+    const dataRows = rows.slice(1).filter(rowHasData);
+
+    validateWorkbookData(header, dataRows);
+
+    masterFileData = {
+      fileName: file.name,
+      header,
+      dataRows
+    };
+
+    renderMasterColumnOptions(header);
+    mostrarResumen(masterSummary, [
+      ["Archivo maestro", file.name],
+      ["Columnas detectadas", header.length],
+      ["Filas de datos", dataRows.length]
+    ], [{ text: "Archivo maestro cargado correctamente.", type: "success" }]);
+  } catch (error) {
+    resetMasterFileData();
+    mostrarMensajeResumen(masterSummary, error.message || "No fue posible leer el archivo maestro.", "error");
+  } finally {
+    setMasterProcessingState(false);
+  }
+}
+
+function handleFilterMasterFile() {
+  resetFilteredMasterResults();
+
+  if (!clientesDepurados || !clientesDepurados.keys.size) {
+    mostrarMensajeResumen(masterSummary, "Primero genera la lista depurada de clientes únicos.", "warning");
+    return;
+  }
+
+  if (!masterFileData) {
+    mostrarMensajeResumen(masterSummary, "Debes cargar un archivo maestro antes de filtrar.", "error");
+    return;
+  }
+
+  const selectedColumnIndex = getSelectedMasterColumnIndex();
+
+  if (selectedColumnIndex < 0 || selectedColumnIndex >= masterFileData.header.length) {
+    mostrarMensajeResumen(masterSummary, "Selecciona una columna válida para comparar.", "error");
+    return;
+  }
+
+  setMasterProcessingState(true, "Filtrando...");
+
+  try {
+    const result = filtrarArchivoMaestro(masterFileData, clientesDepurados.keys, selectedColumnIndex);
+    filteredMasterBlob = crearCsvBlob([masterFileData.header, ...result.remainingRows]);
+    downloadFilteredButton.disabled = false;
+    renderMasterSummary(result);
+  } catch (error) {
+    mostrarMensajeResumen(masterSummary, error.message || "No fue posible filtrar el archivo maestro.", "error");
+  } finally {
+    setMasterProcessingState(false);
+  }
+}
+
+function handleDownloadFilteredMaster() {
+  if (!filteredMasterBlob) {
+    mostrarMensajeResumen(masterSummary, "Primero filtra el archivo maestro.", "warning");
+    return;
+  }
+
+  triggerDownload(filteredMasterBlob, "archivo_maestro_sin_clientes_excluidos.csv");
+}
+
+async function leerCSV(file) {
+  if (getFileExtension(file.name) !== "csv") {
+    throw new Error(`${file.name} no es un archivo CSV.`);
+  }
+
+  const workbook = await readWorkbook(file);
+  const worksheet = getFirstWorksheet(workbook);
+  return normalizeRows(getRowsFromWorksheet(worksheet));
+}
+
+function normalizarCliente(value) {
+  return limpiarCliente(value).toLowerCase();
+}
+
+function limpiarCliente(value) {
+  return valueToText(value).replace(/^\ufeff/, "").trim();
+}
+
+async function unirClientes(files) {
+  let header = "";
+  let totalRecords = 0;
+  const records = [];
+  const warnings = [];
+
+  for (const file of files) {
+    let rows = [];
+
+    try {
+      rows = await leerCSV(file);
+    } catch (error) {
+      warnings.push(`${file.name}: vacío o no legible.`);
+      continue;
+    }
+
+    if (!rows.length || !rows[0] || !rows[0].some((cell) => limpiarCliente(cell) !== "")) {
+      warnings.push(`${file.name}: no tiene encabezado o está vacío.`);
+      continue;
+    }
+
+    const currentHeader = limpiarCliente(rows[0][0]);
+
+    if (!currentHeader) {
+      warnings.push(`${file.name}: no tiene encabezado en la primera columna.`);
+      continue;
+    }
+
+    if (!header) {
+      header = currentHeader;
+    }
+
+    rows.slice(1).forEach((row) => {
+      const value = limpiarCliente(row[0]);
+
+      if (!value) {
+        return;
+      }
+
+      records.push(value);
+      totalRecords += 1;
+    });
+  }
+
+  if (!header) {
+    throw new Error("Ningún CSV tiene un encabezado válido.");
+  }
+
+  const values = quitarDuplicados(records);
+
+  return {
+    fileCount: files.length,
+    totalRecords,
+    duplicateCount: totalRecords - values.length,
+    header,
+    values,
+    keys: new Set(values.map(normalizarCliente)),
+    warnings
+  };
+}
+
+function quitarDuplicados(values) {
+  const seen = new Set();
+  const uniqueValues = [];
+
+  values.forEach((value) => {
+    const key = normalizarCliente(value);
+
+    if (!key || seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    uniqueValues.push(value);
+  });
+
+  return uniqueValues;
+}
+
+function crearCsvBlob(rows) {
+  return new Blob([`\ufeff${toCsv(rows)}`], { type: "text/csv;charset=utf-8;" });
+}
+
+function filtrarArchivoMaestro(masterData, excludedClientKeys, compareColumnIndex) {
+  const foundClientKeys = new Set();
+  const remainingRows = [];
+  let removedRowsCount = 0;
+
+  masterData.dataRows.forEach((row) => {
+    const key = normalizarCliente(row[compareColumnIndex]);
+
+    if (key && excludedClientKeys.has(key)) {
+      foundClientKeys.add(key);
+      removedRowsCount += 1;
+      return;
+    }
+
+    remainingRows.push(row);
+  });
+
+  return {
+    totalRows: masterData.dataRows.length,
+    foundClientsCount: foundClientKeys.size,
+    removedRowsCount,
+    remainingRows,
+    notFoundClientsCount: excludedClientKeys.size - foundClientKeys.size
+  };
+}
+
+function renderClientSummary(result) {
+  const messages = [{ text: "Clientes unificados correctamente.", type: "success" }];
+
+  result.warnings.forEach((warning) => {
+    messages.push({ text: warning, type: "warning" });
+  });
+
+  mostrarResumen(clientsSummary, [
+    ["Archivos cargados", result.fileCount],
+    ["Registros leídos", result.totalRecords],
+    ["Duplicados eliminados", result.duplicateCount],
+    ["Clientes únicos", result.values.length]
+  ], messages);
+}
+
+function renderMasterSummary(result) {
+  mostrarResumen(masterSummary, [
+    ["Filas del archivo maestro", result.totalRows],
+    ["Clientes encontrados", result.foundClientsCount],
+    ["Filas eliminadas", result.removedRowsCount],
+    ["Filas restantes", result.remainingRows.length],
+    ["Clientes no encontrados", result.notFoundClientsCount]
+  ], [{ text: "Archivo maestro filtrado correctamente.", type: "success" }]);
+}
+
+function mostrarResumen(container, items, messages = []) {
+  container.innerHTML = "";
+
+  if (items.length) {
+    const list = document.createElement("ul");
+    list.className = "summary-list";
+
+    items.forEach(([label, value]) => {
+      const item = document.createElement("li");
+      const labelSpan = document.createElement("span");
+      const valueStrong = document.createElement("strong");
+
+      labelSpan.textContent = label;
+      valueStrong.textContent = value;
+      item.append(labelSpan, valueStrong);
+      list.appendChild(item);
+    });
+
+    container.appendChild(list);
+  }
+
+  messages.forEach((message) => {
+    const paragraph = document.createElement("p");
+    paragraph.className = `message ${message.type || "info"}`;
+    paragraph.textContent = message.text;
+    container.appendChild(paragraph);
+  });
+}
+
+function mostrarMensajeResumen(container, text, type = "info") {
+  mostrarResumen(container, [], [{ text, type }]);
+}
+
+function renderMasterColumnOptions(header) {
+  masterColumnSelect.innerHTML = "";
+
+  header.forEach((columnName, index) => {
+    const option = document.createElement("option");
+    const label = limpiarCliente(columnName) || `Columna ${index + 1}`;
+
+    option.value = String(index);
+    option.textContent = label;
+    masterColumnSelect.appendChild(option);
+  });
+
+  masterColumnGroup.classList.toggle("hidden", header.length <= 1);
+  masterColumnSelect.value = "0";
+}
+
+function getSelectedMasterColumnIndex() {
+  if (!masterFileData) {
+    return -1;
+  }
+
+  if (masterFileData.header.length <= 1) {
+    return 0;
+  }
+
+  return Number.parseInt(masterColumnSelect.value, 10);
+}
+
+function resetClientResults() {
+  clientesDepurados = null;
+  clientesDepuradosBlob = null;
+  downloadClientsButton.disabled = true;
+}
+
+function resetMasterFileData() {
+  masterFileData = null;
+  masterColumnSelect.innerHTML = "";
+  masterColumnGroup.classList.add("hidden");
+}
+
+function resetFilteredMasterResults() {
+  filteredMasterBlob = null;
+  downloadFilteredButton.disabled = true;
+}
+
+function setClientProcessingState(isProcessing) {
+  mergeClientsButton.disabled = isProcessing;
+  mergeClientsButton.textContent = isProcessing ? "Procesando..." : "Unir y quitar duplicados";
+  downloadClientsButton.disabled = isProcessing || !clientesDepuradosBlob;
+}
+
+function setMasterProcessingState(isProcessing, processingText = "Procesando...") {
+  filterMasterButton.disabled = isProcessing;
+  filterMasterButton.textContent = isProcessing ? processingText : "Eliminar clientes encontrados";
+  downloadFilteredButton.disabled = isProcessing || !filteredMasterBlob;
 }
 
 function triggerDownload(blob, fileName) {
