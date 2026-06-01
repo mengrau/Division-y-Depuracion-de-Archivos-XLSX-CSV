@@ -34,6 +34,55 @@ downloadClientsButton.addEventListener("click", handleDownloadClients);
 masterFileInput.addEventListener("change", handleMasterFileSelection);
 filterMasterButton.addEventListener("click", handleFilterMasterFile);
 downloadFilteredButton.addEventListener("click", handleDownloadFilteredMaster);
+initializeFilePickers();
+
+function initializeFilePickers() {
+  const inputs = document.querySelectorAll("[data-file-summary]");
+
+  inputs.forEach((input) => {
+    input.addEventListener("change", () => updateFileSummary(input));
+    input.addEventListener("dragenter", () => setFilePickerDragState(input, true));
+    input.addEventListener("dragover", () => setFilePickerDragState(input, true));
+    input.addEventListener("dragleave", () => setFilePickerDragState(input, false));
+    input.addEventListener("drop", () => {
+      setFilePickerDragState(input, false);
+      window.setTimeout(() => updateFileSummary(input), 0);
+    });
+
+    updateFileSummary(input);
+  });
+}
+
+function updateFileSummary(input) {
+  const summary = document.getElementById(input.dataset.fileSummary);
+
+  if (!summary) {
+    return;
+  }
+
+  const files = Array.from(input.files || []);
+  summary.classList.toggle("has-file", files.length > 0);
+
+  if (!files.length) {
+    summary.textContent = "Ningún archivo seleccionado.";
+    return;
+  }
+
+  if (files.length === 1) {
+    summary.textContent = files[0].name;
+    return;
+  }
+
+  summary.textContent = `${files.length} archivos seleccionados`;
+}
+
+function setFilePickerDragState(input, isDragging) {
+  const picker = input.closest(".file-picker");
+
+  if (picker) {
+    picker.classList.toggle("is-dragging", isDragging);
+  }
+}
 
 function handleFileSelection() {
   clearDownloads();

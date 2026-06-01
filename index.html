@@ -3,92 +3,155 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cortador de archivos Excel y CSV</title>
+  <title>Divisor y depurador de archivos XLSX/CSV</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main class="app-shell">
-    <section class="intro" aria-labelledby="page-title">
-      <div class="intro-copy">
-        <p class="eyebrow">Herramienta local</p>
-        <h1 id="page-title">Divide archivos Excel y CSV en partes listas para descargar</h1>
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero-copy">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>Suite local de archivos</span>
+        </div>
+        <p class="eyebrow">XLSX · CSV · Clientes</p>
+        <h1 id="page-title">Divisor y depurador de archivos XLSX/CSV</h1>
         <p class="description">
-          Carga tu archivo, define el tamaño de cada bloque y genera CSV separados sin enviar datos a servidores.
+          Procesa archivos grandes, consolida clientes y filtra tu maestro con una experiencia rápida, clara y privada desde el navegador.
         </p>
       </div>
-      <div class="privacy-badge" aria-label="Procesamiento local en el navegador">
-        <span class="badge-icon" aria-hidden="true"></span>
-        <span>
-          <strong>100% local</strong>
-          <small>El archivo se procesa en tu navegador</small>
-        </span>
+
+      <div class="hero-panel" aria-label="Resumen de la herramienta">
+        <div class="hero-panel-top">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>Procesamiento local activo</span>
+        </div>
+        <div class="hero-stat-grid">
+          <div class="metric-card">
+            <span class="metric-icon" aria-hidden="true">01</span>
+            <strong>Cortar</strong>
+            <small>Archivos por filas</small>
+          </div>
+          <div class="metric-card">
+            <span class="metric-icon" aria-hidden="true">02</span>
+            <strong>Depurar</strong>
+            <small>CSV sin duplicados</small>
+          </div>
+          <div class="metric-card metric-card-wide">
+            <span class="metric-icon" aria-hidden="true">03</span>
+            <strong>Filtrar maestro</strong>
+            <small>Resultado listo para descargar</small>
+          </div>
+        </div>
       </div>
     </section>
 
-    <div class="workspace-grid">
-      <section class="tool-panel" aria-label="Formulario para dividir archivos">
-        <div class="panel-heading">
-          <p class="section-kicker">Configuración</p>
-          <h2>Prepara el corte</h2>
+    <section class="module-card module-card-featured" aria-labelledby="split-title" data-accent="blue">
+      <div class="module-header">
+        <div class="module-title-group">
+          <p class="section-kicker">Módulo 1</p>
+          <h2 id="split-title">Cortar archivos por filas</h2>
+          <p>Selecciona un archivo Excel o CSV y define cuántas filas debe tener cada archivo de salida.</p>
         </div>
-
-        <div class="field-group file-field">
-          <label for="file-input">Archivo .xlsx, .xls o .csv</label>
-          <input id="file-input" type="file" accept=".xlsx,.xls,.csv">
-        </div>
-
-        <div class="field-group">
-          <label for="rows-input">Filas por archivo</label>
-          <input id="rows-input" type="number" min="1" step="1" placeholder="Ej: 2000">
-        </div>
-
-        <button id="process-button" class="primary-button" type="button">Procesar archivo</button>
-      </section>
-
-      <div class="results-stack">
-        <section class="status-panel" aria-live="polite" aria-label="Mensajes de estado">
-          <div class="panel-heading compact">
-            <p class="section-kicker">Progreso</p>
-            <h2>Estado</h2>
-          </div>
-          <div id="status-messages" class="messages">
-            <p class="message info">Selecciona un archivo y define el número de filas por CSV.</p>
-          </div>
-        </section>
-
-        <section class="downloads-panel" aria-label="Descargas generadas">
-          <div class="downloads-header">
-            <div class="panel-heading compact">
-              <p class="section-kicker">Resultado</p>
-              <h2>Descargas</h2>
-            </div>
-            <div class="downloads-actions">
-              <span id="download-count" class="download-count">0 archivos</span>
-              <button id="download-all-button" class="secondary-button" type="button" disabled>Descargar todo</button>
-            </div>
-          </div>
-          <div id="downloads-list" class="downloads-list">
-            <p class="empty-state">Los enlaces aparecerán aquí después del procesamiento.</p>
-          </div>
-        </section>
-      </div>
-    </div>
-    <section class="clients-module" aria-labelledby="clients-title">
-      <div class="panel-heading">
-        <p class="section-kicker">Clientes CSV</p>
-        <h2 id="clients-title">Unir y depurar clientes CSV</h2>
+        <span class="module-tag">XLSX · XLS · CSV</span>
       </div>
 
-      <div class="clients-grid">
-        <section class="client-panel" aria-label="Unir CSV de clientes">
-          <div class="panel-heading compact">
-            <p class="section-kicker">Paso 1</p>
-            <h3>Unir CSV de clientes</h3>
-          </div>
-
+      <div class="split-layout">
+        <div class="form-stack" aria-label="Formulario para dividir archivos">
           <div class="field-group file-field">
-            <label for="client-csv-input">Archivos CSV de clientes</label>
-            <input id="client-csv-input" type="file" accept=".csv" multiple>
+            <span class="field-label">Archivo de origen</span>
+            <div class="file-picker">
+              <input
+                id="file-input"
+                class="file-input"
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                data-file-summary="split-file-summary"
+              >
+              <label class="file-dropzone" for="file-input">
+                <span class="file-dropzone-icon" aria-hidden="true"></span>
+                <span>
+                  <strong>Haz clic o arrastra tu archivo aquí</strong>
+                  <small>Formatos permitidos: .xlsx, .xls o .csv</small>
+                </span>
+              </label>
+            </div>
+            <p id="split-file-summary" class="file-summary">Ningún archivo seleccionado.</p>
+          </div>
+
+          <div class="field-group">
+            <label for="rows-input">Filas por archivo</label>
+            <input id="rows-input" type="number" min="1" step="1" placeholder="Ej: 2000">
+          </div>
+
+          <button id="process-button" class="primary-button" type="button">Procesar archivo</button>
+        </div>
+
+        <div class="results-stack">
+          <section class="result-panel" aria-live="polite" aria-label="Mensajes de estado">
+            <div class="panel-heading compact">
+              <p class="section-kicker">Progreso</p>
+              <h3>Estado del procesamiento</h3>
+            </div>
+            <div id="status-messages" class="messages">
+              <p class="message info">Selecciona un archivo y define el número de filas por CSV.</p>
+            </div>
+          </section>
+
+          <section class="result-panel" aria-label="Descargas generadas">
+            <div class="downloads-header">
+              <div class="panel-heading compact">
+                <p class="section-kicker">Resultado</p>
+                <h3>Descargas</h3>
+              </div>
+              <div class="downloads-actions">
+                <span id="download-count" class="download-count">0 archivos</span>
+                <button id="download-all-button" class="secondary-button" type="button" disabled>Descargar todo</button>
+              </div>
+            </div>
+            <div id="downloads-list" class="downloads-list">
+              <p class="empty-state">Los enlaces aparecerán aquí después del procesamiento.</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="module-grid" aria-label="Módulos de clientes">
+      <article class="module-card" aria-labelledby="merge-title" data-accent="teal">
+        <div class="module-header">
+          <div class="module-title-group">
+            <p class="section-kicker">Módulo 2</p>
+            <h2 id="merge-title">Unir CSV y quitar duplicados</h2>
+            <p>Combina varios archivos de clientes y genera una lista única, limpia y descargable.</p>
+          </div>
+          <span class="module-tag">CSV</span>
+        </div>
+
+        <div class="form-stack">
+          <div class="field-group file-field">
+            <span class="field-label">Archivos CSV de clientes</span>
+            <div class="file-picker">
+              <input
+                id="client-csv-input"
+                class="file-input"
+                type="file"
+                accept=".csv"
+                multiple
+                data-file-summary="client-file-summary"
+              >
+              <label class="file-dropzone" for="client-csv-input">
+                <span class="file-dropzone-icon" aria-hidden="true"></span>
+                <span>
+                  <strong>Haz clic o arrastra tus CSV aquí</strong>
+                  <small>Puedes cargar varios archivos a la vez</small>
+                </span>
+              </label>
+            </div>
+            <p id="client-file-summary" class="file-summary">Ningún archivo seleccionado.</p>
           </div>
 
           <div class="button-row">
@@ -99,17 +162,39 @@
           <div id="clients-summary" class="summary-box" aria-live="polite">
             <p class="empty-state">Carga varios CSV para generar la lista depurada.</p>
           </div>
-        </section>
+        </div>
+      </article>
 
-        <section class="client-panel" aria-label="Eliminar clientes de archivo maestro">
-          <div class="panel-heading compact">
-            <p class="section-kicker">Paso 2</p>
-            <h3>Eliminar clientes de archivo maestro</h3>
+      <article class="module-card" aria-labelledby="master-title" data-accent="coral">
+        <div class="module-header">
+          <div class="module-title-group">
+            <p class="section-kicker">Módulo 3</p>
+            <h2 id="master-title">Eliminar clientes del archivo maestro</h2>
+            <p>Usa la lista depurada para retirar coincidencias de tu archivo maestro y descargar el resultado filtrado.</p>
           </div>
+          <span class="module-tag">Maestro</span>
+        </div>
 
+        <div class="form-stack">
           <div class="field-group file-field">
-            <label for="master-file-input">Archivo maestro .csv, .xlsx o .xls</label>
-            <input id="master-file-input" type="file" accept=".csv,.xlsx,.xls">
+            <span class="field-label">Archivo maestro</span>
+            <div class="file-picker">
+              <input
+                id="master-file-input"
+                class="file-input"
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                data-file-summary="master-file-summary"
+              >
+              <label class="file-dropzone" for="master-file-input">
+                <span class="file-dropzone-icon" aria-hidden="true"></span>
+                <span>
+                  <strong>Haz clic o arrastra el archivo maestro</strong>
+                  <small>Formatos permitidos: .csv, .xlsx o .xls</small>
+                </span>
+              </label>
+            </div>
+            <p id="master-file-summary" class="file-summary">Ningún archivo seleccionado.</p>
           </div>
 
           <div id="master-column-group" class="field-group hidden">
@@ -125,8 +210,8 @@
           <div id="master-summary" class="summary-box" aria-live="polite">
             <p class="empty-state">Carga un archivo maestro después de generar clientes únicos.</p>
           </div>
-        </section>
-      </div>
+        </div>
+      </article>
     </section>
   </main>
 
