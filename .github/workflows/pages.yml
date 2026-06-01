@@ -29,6 +29,12 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
+      - name: Verify static assets
+        run: |
+          test -f index.html
+          test -s styles.css
+          test -s script.js
+
       - name: Upload static files
         uses: actions/upload-pages-artifact@v3
         with:
