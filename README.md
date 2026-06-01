@@ -10,9 +10,10 @@ La herramienta permite cortar archivos por numero de filas, unir CSV de clientes
 - Descargar cada parte generada o descargar todas las partes en un ZIP.
 - Unir varios CSV de clientes de una sola columna.
 - Quitar clientes duplicados y descargar la lista depurada.
+- Cargar una lista independiente de clientes a eliminar desde el modulo de archivo maestro.
 - Cargar un archivo maestro `.csv`, `.xlsx` o `.xls`.
 - Seleccionar la columna de comparacion cuando el archivo maestro tiene varias columnas.
-- Eliminar del maestro los clientes encontrados en la lista depurada.
+- Eliminar del maestro los clientes encontrados en la lista cargada para ese modulo.
 - Descargar el archivo maestro filtrado.
 
 ## Archivos principales
@@ -79,6 +80,8 @@ La primera fila del archivo se trata como encabezado y se conserva en cada CSV g
 
 Si el archivo Excel tiene varias hojas, solo se procesa la primera hoja y se muestra un aviso.
 
+En el modulo de archivo maestro, la lista de clientes a eliminar se carga de forma independiente. La app toma la primera columna de esa lista, omite el encabezado, quita duplicados internamente para comparar y filtra el archivo maestro con esos valores.
+
 Los CSV se generan en UTF-8 con BOM para facilitar la apertura en Excel. Los valores con comas, comillas o saltos de linea se escapan correctamente.
 
 ## Recomendaciones
@@ -86,4 +89,5 @@ Los CSV se generan en UTF-8 con BOM para facilitar la apertura en Excel. Los val
 - Procesa archivos grandes en un equipo con suficiente memoria disponible.
 - Usa bloques de filas razonables para no generar demasiados archivos.
 - Prueba primero con una muestra pequena si el archivo maestro es muy grande.
+- En la lista de clientes a eliminar, deja los clientes en la primera columna y conserva un encabezado en la primera fila.
 - Verifica la columna de comparacion antes de filtrar clientes del archivo maestro.

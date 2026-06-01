@@ -10,6 +10,7 @@ const clientCsvInput = document.getElementById("client-csv-input");
 const mergeClientsButton = document.getElementById("merge-clients-button");
 const downloadClientsButton = document.getElementById("download-clients-button");
 const clientsSummary = document.getElementById("clients-summary");
+const masterClientsInput = document.getElementById("master-clients-input");
 const masterFileInput = document.getElementById("master-file-input");
 const masterColumnGroup = document.getElementById("master-column-group");
 const masterColumnSelect = document.getElementById("master-column-select");
@@ -22,6 +23,7 @@ let generatedDownloadItems = [];
 let generatedArchiveName = "archivos_csv.zip";
 let clientesDepurados = null;
 let clientesDepuradosBlob = null;
+let masterClientList = null;
 let masterFileData = null;
 let filteredMasterBlob = null;
 
@@ -31,6 +33,7 @@ downloadAllButton.addEventListener("click", downloadAllFiles);
 clientCsvInput.addEventListener("change", handleClientCsvSelection);
 mergeClientsButton.addEventListener("click", handleMergeClients);
 downloadClientsButton.addEventListener("click", handleDownloadClients);
+masterClientsInput.addEventListener("change", handleMasterClientsSelection);
 masterFileInput.addEventListener("change", handleMasterFileSelection);
 filterMasterButton.addEventListener("click", handleFilterMasterFile);
 downloadFilteredButton.addEventListener("click", handleDownloadFilteredMaster);
@@ -427,6 +430,39 @@ function handleDownloadClients() {
   triggerDownload(clientesDepuradosBlob, "clientes_unificados_sin_duplicados.csv");
 }
 
+async function handleMasterClientsSelection() {
+  resetMasterClientList();
+  resetFilteredMasterResults();
+
+  if (!masterClientsInput.files.length) {
+    mostrarMensajeResumen(masterSummary, "No se ha cargado ninguna lista de clientes.", "error");
+    return;
+  }
+
+  const file = masterClientsInput.files[0];
+  const extension = getFileExtension(file.name);
+
+  if (!allowedExtensions.includes(extension)) {
+    mostrarMensajeResumen(masterSummary, "La lista de clientes debe ser .csv, .xlsx o .xls.", "error");
+    return;
+  }
+
+  setMasterProcessingState(true, "Leyendo...");
+  mostrarMensajeResumen(masterSummary, "Leyendo lista de clientes a eliminar...", "info");
+
+  try {
+    ensureSheetJsIsAvailable();
+
+    masterClientList = await leerListaClientesParaEliminar(file);
+    renderMasterSetupSummary([{ text: "Lista de clientes cargada correctamente.", type: "success" }]);
+  } catch (error) {
+    resetMasterClientList();
+    mostrarMensajeResumen(masterSummary, error.message || "No fue posible leer la lista de clientes.", "error");
+  } finally {
+    setMasterProcessingState(false);
+  }
+}
+
 async function handleMasterFileSelection() {
   resetMasterFileData();
   resetFilteredMasterResults();
@@ -465,11 +501,7 @@ async function handleMasterFileSelection() {
     };
 
     renderMasterColumnOptions(header);
-    mostrarResumen(masterSummary, [
-      ["Archivo maestro", file.name],
-      ["Columnas detectadas", header.length],
-      ["Filas de datos", dataRows.length]
-    ], [{ text: "Archivo maestro cargado correctamente.", type: "success" }]);
+    renderMasterSetupSummary([{ text: "Archivo maestro cargado correctamente.", type: "success" }]);
   } catch (error) {
     resetMasterFileData();
     mostrarMensajeResumen(masterSummary, error.message || "No fue posible leer el archivo maestro.", "error");
@@ -481,8 +513,8 @@ async function handleMasterFileSelection() {
 function handleFilterMasterFile() {
   resetFilteredMasterResults();
 
-  if (!clientesDepurados || !clientesDepurados.keys.size) {
-    mostrarMensajeResumen(masterSummary, "Primero genera la lista depurada de clientes únicos.", "warning");
+  if (!masterClientList || !masterClientList.keys.size) {
+    mostrarMensajeResumen(masterSummary, "Debes cargar la lista de clientes a eliminar.", "warning");
     return;
   }
 
@@ -501,7 +533,7 @@ function handleFilterMasterFile() {
   setMasterProcessingState(true, "Filtrando...");
 
   try {
-    const result = filtrarArchivoMaestro(masterFileData, clientesDepurados.keys, selectedColumnIndex);
+    const result = filtrarArchivoMaestro(masterFileData, masterClientList.keys, selectedColumnIndex);
     filteredMasterBlob = crearCsvBlob([masterFileData.header, ...result.remainingRows]);
     downloadFilteredButton.disabled = false;
     renderMasterSummary(result);
@@ -529,6 +561,37 @@ async function leerCSV(file) {
   const workbook = await readWorkbook(file);
   const worksheet = getFirstWorksheet(workbook);
   return normalizeRows(getRowsFromWorksheet(worksheet));
+}
+
+async function leerListaClientesParaEliminar(file) {
+  const workbook = await readWorkbook(file);
+  const worksheet = getFirstWorksheet(workbook);
+  const rows = normalizeRows(getRowsFromWorksheet(worksheet));
+
+  if (!rows.length || !rows[0] || !rows[0].some((cell) => limpiarCliente(cell) !== "")) {
+    throw new Error("La lista de clientes no tiene encabezado o está vacía.");
+  }
+
+  const header = limpiarCliente(rows[0][0]) || "Cliente";
+  const records = rows
+    .slice(1)
+    .map((row) => limpiarCliente(row[0]))
+    .filter(Boolean);
+
+  if (!records.length) {
+    throw new Error("No se encontraron clientes válidos debajo del encabezado.");
+  }
+
+  const values = quitarDuplicados(records);
+
+  return {
+    fileName: file.name,
+    header,
+    totalRecords: records.length,
+    duplicateCount: records.length - values.length,
+    values,
+    keys: new Set(values.map(normalizarCliente))
+  };
 }
 
 function normalizarCliente(value) {
@@ -673,6 +736,33 @@ function renderMasterSummary(result) {
   ], [{ text: "Archivo maestro filtrado correctamente.", type: "success" }]);
 }
 
+function renderMasterSetupSummary(messages = []) {
+  const items = [];
+
+  if (masterClientList) {
+    items.push(
+      ["Lista de clientes", masterClientList.fileName],
+      ["Clientes a eliminar", masterClientList.values.length],
+      ["Duplicados en lista", masterClientList.duplicateCount]
+    );
+  }
+
+  if (masterFileData) {
+    items.push(
+      ["Archivo maestro", masterFileData.fileName],
+      ["Columnas detectadas", masterFileData.header.length],
+      ["Filas de datos", masterFileData.dataRows.length]
+    );
+  }
+
+  if (!items.length) {
+    mostrarMensajeResumen(masterSummary, "Carga la lista de clientes y el archivo maestro para filtrar coincidencias.", "info");
+    return;
+  }
+
+  mostrarResumen(masterSummary, items, messages);
+}
+
 function mostrarResumen(container, items, messages = []) {
   container.innerHTML = "";
 
@@ -744,6 +834,10 @@ function resetMasterFileData() {
   masterFileData = null;
   masterColumnSelect.innerHTML = "";
   masterColumnGroup.classList.add("hidden");
+}
+
+function resetMasterClientList() {
+  masterClientList = null;
 }
 
 function resetFilteredMasterResults() {
