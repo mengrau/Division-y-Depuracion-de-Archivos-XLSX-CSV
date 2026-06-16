@@ -127,10 +127,9 @@ async function processSelectedFile() {
     const worksheet = getFirstWorksheet(workbook);
     const allRows = getRowsFromWorksheet(worksheet);
     const normalizedRows = normalizeRows(allRows);
-    const header = normalizedRows[0];
-    const dataRows = normalizedRows.slice(1);
+    const { header, dataRows } = separarEncabezadoYDatos(normalizedRows);
 
-    validateWorkbookData(header, dataRows);
+    validateWorkbookData(dataRows);
 
     const parts = splitRows(dataRows, rowsPerFile);
     const fileBaseName = sanitizeFileBaseName(removeFileExtension(file.name));
@@ -222,13 +221,37 @@ function normalizeRows(rows) {
   });
 }
 
-function validateWorkbookData(header, dataRows) {
-  if (!header || !header.some((cell) => cell.trim() !== "")) {
-    throw new Error("La primera fila debe contener encabezados.");
+function obtenerFilasValidas(filas) {
+  if (!filas || filas.length === 0) {
+    return [];
   }
 
+  return archivoTieneEncabezado(filas) ? filas.slice(1) : filas;
+}
+
+function obtenerCodigoCliente(fila) {
+  return limpiarCliente(fila?.[0]);
+}
+
+function archivoTieneEncabezado(filas) {
+  const primerValorPrimeraColumna = obtenerCodigoCliente(filas?.[0]);
+  return !primerValorPrimeraColumna.startsWith("1");
+}
+
+function separarEncabezadoYDatos(filas) {
+  const tieneEncabezado = archivoTieneEncabezado(filas);
+
+  return {
+    tieneEncabezado,
+    header: tieneEncabezado ? filas[0] : null,
+    dataRows: obtenerFilasValidas(filas),
+    columnCount: filas.reduce((max, row) => Math.max(max, row.length), 0)
+  };
+}
+
+function validateWorkbookData(dataRows) {
   if (!dataRows.length || !dataRows.some(rowHasData)) {
-    throw new Error("El archivo debe contener al menos una fila de datos además de los encabezados.");
+    throw new Error("El archivo debe contener al menos una fila de datos valida.");
   }
 }
 
@@ -245,7 +268,8 @@ function splitRows(rows, rowsPerFile) {
 function createCsvDownloads(fileBaseName, header, parts) {
   return parts.map((partRows, index) => {
     const fileName = `${fileBaseName}_parte_${index + 1}.csv`;
-    const csvContent = toCsv([header, ...partRows]);
+    const rowsToExport = header ? [header, ...partRows] : partRows;
+    const csvContent = toCsv(rowsToExport);
     const blob = new Blob([`\ufeff${csvContent}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     generatedUrls.push(url);
@@ -403,7 +427,7 @@ async function handleMergeClients() {
 
     if (!clientesDepurados.values.length) {
       clientesDepurados = null;
-      mostrarMensajeResumen(clientsSummary, "No se encontraron clientes válidos debajo del encabezado.", "error");
+      mostrarMensajeResumen(clientsSummary, "No se encontraron clientes validos en la primera columna.", "error");
       return;
     }
 
@@ -489,15 +513,16 @@ async function handleMasterFileSelection() {
     const workbook = await readWorkbook(file);
     const worksheet = getFirstWorksheet(workbook);
     const rows = normalizeRows(getRowsFromWorksheet(worksheet));
-    const header = rows[0];
-    const dataRows = rows.slice(1).filter(rowHasData);
+    const { header, dataRows, columnCount } = separarEncabezadoYDatos(rows);
+    const validDataRows = dataRows.filter(rowHasData);
 
-    validateWorkbookData(header, dataRows);
+    validateWorkbookData(validDataRows);
 
     masterFileData = {
       fileName: file.name,
       header,
-      dataRows
+      dataRows: validDataRows,
+      columnCount
     };
 
     renderMasterColumnOptions(header);
@@ -523,18 +548,14 @@ function handleFilterMasterFile() {
     return;
   }
 
-  const selectedColumnIndex = getSelectedMasterColumnIndex();
-
-  if (selectedColumnIndex < 0 || selectedColumnIndex >= masterFileData.header.length) {
-    mostrarMensajeResumen(masterSummary, "Selecciona una columna válida para comparar.", "error");
-    return;
-  }
-
   setMasterProcessingState(true, "Filtrando...");
 
   try {
-    const result = filtrarArchivoMaestro(masterFileData, masterClientList.keys, selectedColumnIndex);
-    filteredMasterBlob = crearCsvBlob([masterFileData.header, ...result.remainingRows]);
+    const result = filtrarArchivoMaestro(masterFileData, masterClientList.keys);
+    const rowsToDownload = masterFileData.header
+      ? [masterFileData.header, ...result.remainingRows]
+      : result.remainingRows;
+    filteredMasterBlob = crearCsvBlob(rowsToDownload);
     downloadFilteredButton.disabled = false;
     renderMasterSummary(result);
   } catch (error) {
@@ -567,19 +588,19 @@ async function leerListaClientesParaEliminar(file) {
   const workbook = await readWorkbook(file);
   const worksheet = getFirstWorksheet(workbook);
   const rows = normalizeRows(getRowsFromWorksheet(worksheet));
+  const validRows = obtenerFilasValidas(rows);
 
-  if (!rows.length || !rows[0] || !rows[0].some((cell) => limpiarCliente(cell) !== "")) {
-    throw new Error("La lista de clientes no tiene encabezado o está vacía.");
+  if (!validRows.length || !validRows.some((row) => obtenerCodigoCliente(row) !== "")) {
+    throw new Error("La lista de clientes esta vacia o no tiene clientes validos en la primera columna.");
   }
 
-  const header = limpiarCliente(rows[0][0]) || "Cliente";
-  const records = rows
-    .slice(1)
-    .map((row) => limpiarCliente(row[0]))
+  const header = archivoTieneEncabezado(rows) ? obtenerCodigoCliente(rows[0]) || "Cliente" : "Cliente";
+  const records = validRows
+    .map(obtenerCodigoCliente)
     .filter(Boolean);
 
   if (!records.length) {
-    throw new Error("No se encontraron clientes válidos debajo del encabezado.");
+    throw new Error("No se encontraron clientes validos en la primera columna.");
   }
 
   const values = quitarDuplicados(records);
@@ -618,24 +639,21 @@ async function unirClientes(files) {
       continue;
     }
 
-    if (!rows.length || !rows[0] || !rows[0].some((cell) => limpiarCliente(cell) !== "")) {
-      warnings.push(`${file.name}: no tiene encabezado o está vacío.`);
+    const validRows = obtenerFilasValidas(rows);
+
+    if (!validRows.length || !validRows.some((row) => obtenerCodigoCliente(row) !== "")) {
+      warnings.push(`${file.name}: vacio o sin clientes validos en la primera columna.`);
       continue;
     }
 
-    const currentHeader = limpiarCliente(rows[0][0]);
-
-    if (!currentHeader) {
-      warnings.push(`${file.name}: no tiene encabezado en la primera columna.`);
-      continue;
-    }
+    const currentHeader = archivoTieneEncabezado(rows) ? obtenerCodigoCliente(rows[0]) || "Cliente" : "Cliente";
 
     if (!header) {
       header = currentHeader;
     }
 
-    rows.slice(1).forEach((row) => {
-      const value = limpiarCliente(row[0]);
+    validRows.forEach((row) => {
+      const value = obtenerCodigoCliente(row);
 
       if (!value) {
         return;
@@ -647,7 +665,7 @@ async function unirClientes(files) {
   }
 
   if (!header) {
-    throw new Error("Ningún CSV tiene un encabezado válido.");
+    throw new Error("Ningun CSV contiene clientes validos en la primera columna.");
   }
 
   const values = quitarDuplicados(records);
@@ -685,13 +703,13 @@ function crearCsvBlob(rows) {
   return new Blob([`\ufeff${toCsv(rows)}`], { type: "text/csv;charset=utf-8;" });
 }
 
-function filtrarArchivoMaestro(masterData, excludedClientKeys, compareColumnIndex) {
+function filtrarArchivoMaestro(masterData, excludedClientKeys) {
   const foundClientKeys = new Set();
   const remainingRows = [];
   let removedRowsCount = 0;
 
   masterData.dataRows.forEach((row) => {
-    const key = normalizarCliente(row[compareColumnIndex]);
+    const key = normalizarCliente(obtenerCodigoCliente(row));
 
     if (key && excludedClientKeys.has(key)) {
       foundClientKeys.add(key);
@@ -750,7 +768,7 @@ function renderMasterSetupSummary(messages = []) {
   if (masterFileData) {
     items.push(
       ["Archivo maestro", masterFileData.fileName],
-      ["Columnas detectadas", masterFileData.header.length],
+      ["Columnas detectadas", masterFileData.columnCount],
       ["Filas de datos", masterFileData.dataRows.length]
     );
   }
@@ -799,29 +817,19 @@ function mostrarMensajeResumen(container, text, type = "info") {
 function renderMasterColumnOptions(header) {
   masterColumnSelect.innerHTML = "";
 
-  header.forEach((columnName, index) => {
-    const option = document.createElement("option");
-    const label = limpiarCliente(columnName) || `Columna ${index + 1}`;
+  const option = document.createElement("option");
+  const firstColumnName = header ? limpiarCliente(header[0]) : "";
+  const label = firstColumnName || "Columna 1";
 
-    option.value = String(index);
-    option.textContent = label;
-    masterColumnSelect.appendChild(option);
-  });
-
-  masterColumnGroup.classList.toggle("hidden", header.length <= 1);
+  option.value = "0";
+  option.textContent = label;
+  masterColumnSelect.appendChild(option);
+  masterColumnGroup.classList.add("hidden");
   masterColumnSelect.value = "0";
 }
 
 function getSelectedMasterColumnIndex() {
-  if (!masterFileData) {
-    return -1;
-  }
-
-  if (masterFileData.header.length <= 1) {
-    return 0;
-  }
-
-  return Number.parseInt(masterColumnSelect.value, 10);
+  return 0;
 }
 
 function resetClientResults() {
@@ -924,4 +932,53 @@ function sanitizeFileBaseName(fileName) {
 
 function rowHasData(row) {
   return row.some((cell) => cell.trim() !== "");
+}
+
+function probarValidacionEncabezado() {
+  const pruebas = [
+    {
+      nombre: "Sin encabezado",
+      filas: [
+        ["123456789", "Cliente 1"],
+        ["123456790", "Cliente 2"]
+      ],
+      esperado: 2
+    },
+    {
+      nombre: "Con encabezado",
+      filas: [
+        ["Codigo Cliente", "Nombre"],
+        ["123456789", "Cliente 1"],
+        ["123456790", "Cliente 2"]
+      ],
+      esperado: 2
+    },
+    {
+      nombre: "Varias columnas sin encabezado",
+      filas: [
+        ["123456789", "Cliente 1", "Medellin"],
+        ["123456790", "Cliente 2", "Bogota"]
+      ],
+      esperado: 2
+    },
+    {
+      nombre: "Varias columnas con encabezado",
+      filas: [
+        ["Codigo Cliente", "Nombre", "Ciudad"],
+        ["123456789", "Cliente 1", "Medellin"],
+        ["123456790", "Cliente 2", "Bogota"]
+      ],
+      esperado: 2
+    }
+  ];
+
+  pruebas.forEach((prueba) => {
+    const resultado = obtenerFilasValidas(prueba.filas);
+
+    if (resultado.length === prueba.esperado) {
+      console.log(`OK ${prueba.nombre}: correcto`);
+    } else {
+      console.error(`${prueba.nombre}: esperado ${prueba.esperado}, obtenido ${resultado.length}`);
+    }
+  });
 }
