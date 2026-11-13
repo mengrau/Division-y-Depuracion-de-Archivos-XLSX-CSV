@@ -3,241 +3,78 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Divisor y depurador de archivos XLSX/CSV</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=20260601-glass">
+  <meta name="theme-color" content="#101523">
+  <meta name="description" content="Divide archivos, une CSV y excluye clientes de tu maestro. Procesamiento local en tu navegador.">
+  <title>Archivo — Divide, une y depura</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="stylesheet" href="./styles.css?v=20261112-cards-aligned">
 </head>
 <body>
-  <main class="app-shell">
-    <section class="hero" aria-labelledby="page-title">
-      <div class="hero-copy">
-        <div class="brand-lockup">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>Suite local de archivos</span>
-        </div>
-        <p class="eyebrow">XLSX · CSV · Clientes</p>
-        <h1 id="page-title">Divisor y depurador de archivos XLSX/CSV</h1>
-        <p class="description">
-          Procesa archivos grandes, consolida clientes y filtra tu maestro con una experiencia rápida, clara y privada desde el navegador.
-        </p>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="icon-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5"/></symbol>
+    <symbol id="icon-split" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5zM3 12l9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="icon-merge" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3M12 14.5h5M14.5 12v5"/></symbol>
+    <symbol id="icon-filter" viewBox="0 0 24 24"><path d="M3 4h18l-7 8v7l-4 2v-9z"/></symbol>
+    <symbol id="icon-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></symbol>
+  </svg>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#page-title" aria-label="Archivo, inicio"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span><span>archivo<span class="brand-period">.</span></span></a>
+      <span class="local-badge"><svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg>Procesamiento local</span>
+    </header>
+    <main>
+      <div class="page-heading"><div><h1 id="page-title">Tus archivos, en orden<span>.</span></h1><p>Divide, une y filtra. Todo en tu navegador.</p></div><span class="format-tag">Excel &amp; CSV</span></div>
+      <div class="modules-grid">
+        <section id="dividir" class="module-card" aria-labelledby="split-title">
+          <header class="card-header"><span class="tool-icon"><svg class="icon" aria-hidden="true"><use href="#icon-split"/></svg></span><div><h2 id="split-title" tabindex="-1">Dividir archivos</h2><p>Separa por número de filas.</p></div><span class="card-number" aria-label="Módulo 1">01</span></header>
+          <div class="input-panel">
+            <div class="field-group file-field"><label class="field-label" for="file-input">Archivo de origen</label><div class="file-picker"><input id="file-input" class="file-input" type="file" accept=".xlsx,.xls,.csv" data-file-summary="split-file-summary" aria-describedby="split-file-summary"><label class="file-dropzone" for="file-input"><svg class="upload-icon" aria-hidden="true"><use href="#icon-file"/></svg><strong>Elige o arrastra un archivo</strong><small>XLSX, XLS o CSV</small></label></div><p id="split-file-summary" class="file-summary">Sin archivo seleccionado</p></div>
+            <div class="field-group rows-field"><label for="rows-input">Filas por archivo</label><input id="rows-input" type="number" min="1" step="1" placeholder="Ej. 2000"><small class="field-help">Conserva el encabezado en cada parte.</small></div>
+            <button id="process-button" class="primary-button" type="button">Dividir archivo</button>
+          </div>
+          <div class="output-panel">
+            <div class="output-heading"><h3>Resultado</h3><span id="download-count" class="count-badge">0 archivos</span></div>
+            <div id="status-messages" class="messages" role="status"></div>
+            <div id="downloads-list" class="downloads-list"><p class="empty-state">Tus partes aparecerán aquí.</p></div>
+            <button id="download-all-button" class="secondary-button" type="button" disabled>Descargar ZIP</button>
+          </div>
+        </section>
+        <section id="unir" class="module-card" aria-labelledby="merge-title">
+          <header class="card-header"><span class="tool-icon"><svg class="icon" aria-hidden="true"><use href="#icon-merge"/></svg></span><div><h2 id="merge-title" tabindex="-1">Unir CSV</h2><p>Una lista, sin duplicados.</p></div><span class="card-number" aria-label="Módulo 2">02</span></header>
+          <div class="input-panel">
+            <div class="field-group file-field"><label class="field-label" for="client-csv-input">Archivos de clientes</label><div class="file-picker"><input id="client-csv-input" class="file-input" type="file" accept=".csv" multiple data-file-summary="client-file-summary" aria-describedby="client-file-summary"><label class="file-dropzone" for="client-csv-input"><svg class="upload-icon" aria-hidden="true"><use href="#icon-merge"/></svg><strong>Elige o arrastra tus CSV</strong><small>Selecciona uno o varios archivos</small></label></div><p id="client-file-summary" class="file-summary">Sin archivos seleccionados</p></div>
+            <p class="field-help">Usamos los clientes de la primera columna.</p>
+            <button id="merge-clients-button" class="primary-button" type="button">Unir y depurar</button>
+          </div>
+          <div class="output-panel">
+            <div class="output-heading"><h3>Lista unificada</h3><span class="panel-tag">CSV</span></div>
+            <div id="clients-summary" class="summary-box" role="status"><p class="empty-state">Tu lista unida aparecerá aquí.</p></div>
+            <div class="result-actions"><button id="use-merged-button" class="secondary-button reuse-button" type="button" disabled>Usar en maestro</button><button id="download-clients-button" class="secondary-button" type="button" disabled>Descargar CSV</button></div>
+          </div>
+        </section>
+        <section id="maestro" class="module-card" aria-labelledby="master-title">
+          <header class="card-header"><span class="tool-icon"><svg class="icon" aria-hidden="true"><use href="#icon-filter"/></svg></span><div><h2 id="master-title" tabindex="-1">Filtrar maestro</h2><p>Excluye clientes de tu lista.</p></div><span class="card-number" aria-label="Módulo 3">03</span></header>
+          <div class="input-panel">
+            <fieldset class="source-fieldset"><legend>Clientes a excluir</legend><div class="source-options"><label class="source-option"><input type="radio" name="client-source" value="merged" checked><span>Lista unida</span></label><label class="source-option"><input type="radio" name="client-source" value="upload"><span>Subir archivo</span></label></div></fieldset>
+            <div id="merged-source-panel" class="reuse-panel"><p id="merged-source-status" role="status">Une tus CSV para reutilizar la lista.</p><a id="prepare-merge-link" href="#unir">Ir a Unir CSV</a></div>
+            <div id="uploaded-source-panel" class="field-group file-field" hidden><label class="field-label" for="master-clients-input">Lista de clientes</label><div class="file-picker"><input id="master-clients-input" class="file-input" type="file" accept=".csv,.xlsx,.xls" data-file-summary="master-clients-file-summary" aria-describedby="master-clients-file-summary"><label class="file-dropzone compact-dropzone" for="master-clients-input"><svg class="upload-icon" aria-hidden="true"><use href="#icon-file"/></svg><strong>Elige o arrastra la lista</strong><small>XLSX, XLS o CSV</small></label></div><p id="master-clients-file-summary" class="file-summary">Sin archivo seleccionado</p></div>
+            <div class="field-group file-field"><label class="field-label" for="master-file-input">Archivo maestro</label><div class="file-picker"><input id="master-file-input" class="file-input" type="file" accept=".csv,.xlsx,.xls" data-file-summary="master-file-summary" aria-describedby="master-file-summary"><label class="file-dropzone compact-dropzone" for="master-file-input"><svg class="upload-icon" aria-hidden="true"><use href="#icon-file"/></svg><strong>Elige o arrastra el maestro</strong><small>XLSX, XLS o CSV</small></label></div><p id="master-file-summary" class="file-summary">Sin archivo seleccionado</p></div>
+            <div id="master-column-group" class="field-group hidden"><label for="master-column-select">Columna para comparar</label><select id="master-column-select"></select></div>
+            <p class="field-help">Comparación por la primera columna.</p>
+            <button id="filter-master-button" class="primary-button" type="button">Excluir clientes</button>
+          </div>
+          <div class="output-panel">
+            <div class="output-heading"><h3>Maestro filtrado</h3><span class="panel-tag">CSV</span></div>
+            <div id="master-summary" class="summary-box" role="status"><p class="empty-state">Elige una lista y carga tu maestro.</p></div>
+            <button id="download-filtered-button" class="secondary-button" type="button" disabled>Descargar maestro</button>
+          </div>
+        </section>
       </div>
-
-      <div class="hero-panel" aria-label="Resumen de la herramienta">
-        <div class="hero-panel-top">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span>Procesamiento local activo</span>
-        </div>
-        <div class="hero-stat-grid">
-          <div class="metric-card">
-            <span class="metric-icon" aria-hidden="true">01</span>
-            <strong>Cortar</strong>
-            <small>Archivos por filas</small>
-          </div>
-          <div class="metric-card">
-            <span class="metric-icon" aria-hidden="true">02</span>
-            <strong>Depurar</strong>
-            <small>CSV sin duplicados</small>
-          </div>
-          <div class="metric-card metric-card-wide">
-            <span class="metric-icon" aria-hidden="true">03</span>
-            <strong>Filtrar maestro</strong>
-            <small>Resultado listo para descargar</small>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="module-card module-card-featured" aria-labelledby="split-title" data-accent="blue">
-      <div class="module-header">
-        <div class="module-title-group">
-          <p class="section-kicker">Módulo 1</p>
-          <h2 id="split-title">Cortar archivos por filas</h2>
-          <p>Selecciona un archivo Excel o CSV y define cuántas filas debe tener cada archivo de salida.</p>
-        </div>
-        <span class="module-tag">XLSX · XLS · CSV</span>
-      </div>
-
-      <div class="split-layout">
-        <div class="form-stack" aria-label="Formulario para dividir archivos">
-          <div class="field-group file-field">
-            <span class="field-label">Archivo de origen</span>
-            <div class="file-picker">
-              <input
-                id="file-input"
-                class="file-input"
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                data-file-summary="split-file-summary"
-              >
-              <label class="file-dropzone" for="file-input">
-                <span class="file-dropzone-icon" aria-hidden="true"></span>
-                <span>
-                  <strong>Haz clic o arrastra tu archivo aquí</strong>
-                  <small>Formatos permitidos: .xlsx, .xls o .csv</small>
-                </span>
-              </label>
-            </div>
-            <p id="split-file-summary" class="file-summary">Ningún archivo seleccionado.</p>
-          </div>
-
-          <div class="field-group">
-            <label for="rows-input">Filas por archivo</label>
-            <input id="rows-input" type="number" min="1" step="1" placeholder="Ej: 2000">
-          </div>
-
-          <button id="process-button" class="primary-button" type="button">Procesar archivo</button>
-        </div>
-
-        <div class="results-stack">
-          <section class="result-panel" aria-live="polite" aria-label="Mensajes de estado">
-            <div class="panel-heading compact">
-              <p class="section-kicker">Progreso</p>
-              <h3>Estado del procesamiento</h3>
-            </div>
-            <div id="status-messages" class="messages">
-              <p class="message info">Selecciona un archivo y define el número de filas por CSV.</p>
-            </div>
-          </section>
-
-          <section class="result-panel" aria-label="Descargas generadas">
-            <div class="downloads-header">
-              <div class="panel-heading compact">
-                <p class="section-kicker">Resultado</p>
-                <h3>Descargas</h3>
-              </div>
-              <div class="downloads-actions">
-                <span id="download-count" class="download-count">0 archivos</span>
-                <button id="download-all-button" class="secondary-button" type="button" disabled>Descargar todo</button>
-              </div>
-            </div>
-            <div id="downloads-list" class="downloads-list">
-              <p class="empty-state">Los enlaces aparecerán aquí después del procesamiento.</p>
-            </div>
-          </section>
-        </div>
-      </div>
-    </section>
-
-    <section class="module-grid" aria-label="Módulos de clientes">
-      <article class="module-card" aria-labelledby="merge-title" data-accent="teal">
-        <div class="module-header">
-          <div class="module-title-group">
-            <p class="section-kicker">Módulo 2</p>
-            <h2 id="merge-title">Unir CSV y quitar duplicados</h2>
-            <p>Combina varios archivos de clientes y genera una lista única, limpia y descargable.</p>
-          </div>
-          <span class="module-tag">CSV</span>
-        </div>
-
-        <div class="form-stack">
-          <div class="field-group file-field">
-            <span class="field-label">Archivos CSV de clientes</span>
-            <div class="file-picker">
-              <input
-                id="client-csv-input"
-                class="file-input"
-                type="file"
-                accept=".csv"
-                multiple
-                data-file-summary="client-file-summary"
-              >
-              <label class="file-dropzone" for="client-csv-input">
-                <span class="file-dropzone-icon" aria-hidden="true"></span>
-                <span>
-                  <strong>Haz clic o arrastra tus CSV aquí</strong>
-                  <small>Puedes cargar varios archivos a la vez</small>
-                </span>
-              </label>
-            </div>
-            <p id="client-file-summary" class="file-summary">Ningún archivo seleccionado.</p>
-          </div>
-
-          <div class="button-row">
-            <button id="merge-clients-button" class="primary-button" type="button">Unir y quitar duplicados</button>
-            <button id="download-clients-button" class="secondary-button" type="button" disabled>Descargar clientes únicos</button>
-          </div>
-
-          <div id="clients-summary" class="summary-box" aria-live="polite">
-            <p class="empty-state">Carga varios CSV para generar la lista depurada.</p>
-          </div>
-        </div>
-      </article>
-
-      <article class="module-card" aria-labelledby="master-title" data-accent="coral">
-        <div class="module-header">
-          <div class="module-title-group">
-            <p class="section-kicker">Módulo 3</p>
-            <h2 id="master-title">Eliminar clientes del archivo maestro</h2>
-            <p>Carga el archivo maestro y la lista de clientes que quieres retirar para descargar el resultado filtrado.</p>
-          </div>
-          <span class="module-tag">Maestro</span>
-        </div>
-
-        <div class="form-stack">
-          <div class="field-group file-field">
-            <span class="field-label">Lista de clientes a eliminar</span>
-            <div class="file-picker">
-              <input
-                id="master-clients-input"
-                class="file-input"
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                data-file-summary="master-clients-file-summary"
-              >
-              <label class="file-dropzone" for="master-clients-input">
-                <span class="file-dropzone-icon" aria-hidden="true"></span>
-                <span>
-                  <strong>Haz clic o arrastra la lista de clientes</strong>
-                  <small>Se toma la primera columna y se omite el encabezado</small>
-                </span>
-              </label>
-            </div>
-            <p id="master-clients-file-summary" class="file-summary">Ningún archivo seleccionado.</p>
-          </div>
-
-          <div class="field-group file-field">
-            <span class="field-label">Archivo maestro</span>
-            <div class="file-picker">
-              <input
-                id="master-file-input"
-                class="file-input"
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                data-file-summary="master-file-summary"
-              >
-              <label class="file-dropzone" for="master-file-input">
-                <span class="file-dropzone-icon" aria-hidden="true"></span>
-                <span>
-                  <strong>Haz clic o arrastra el archivo maestro</strong>
-                  <small>Formatos permitidos: .csv, .xlsx o .xls</small>
-                </span>
-              </label>
-            </div>
-            <p id="master-file-summary" class="file-summary">Ningún archivo seleccionado.</p>
-          </div>
-
-          <div id="master-column-group" class="field-group hidden">
-            <label for="master-column-select">Columna para comparar</label>
-            <select id="master-column-select"></select>
-          </div>
-
-          <div class="button-row">
-            <button id="filter-master-button" class="primary-button" type="button">Eliminar clientes encontrados</button>
-            <button id="download-filtered-button" class="secondary-button" type="button" disabled>Descargar archivo filtrado</button>
-          </div>
-
-          <div id="master-summary" class="summary-box" aria-live="polite">
-            <p class="empty-state">Carga la lista de clientes y el archivo maestro para filtrar coincidencias.</p>
-          </div>
-        </div>
-      </article>
-    </section>
-  </main>
-
+    </main>
+    <footer class="page-footer"><svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg><p>Tus archivos se quedan contigo. Se procesan en tu navegador.</p><span>Las listas se conservan hasta recargar.</span></footer>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="script.js"></script>
+  <script src="script.js?v=20261112-cards"></script>
 </body>
 </html>

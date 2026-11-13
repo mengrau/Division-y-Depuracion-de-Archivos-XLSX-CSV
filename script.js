@@ -17,6 +17,12 @@ const masterColumnSelect = document.getElementById("master-column-select");
 const filterMasterButton = document.getElementById("filter-master-button");
 const downloadFilteredButton = document.getElementById("download-filtered-button");
 const masterSummary = document.getElementById("master-summary");
+const useMergedButton = document.getElementById("use-merged-button");
+const clientSourceInputs = document.querySelectorAll('input[name="client-source"]');
+const mergedSourcePanel = document.getElementById("merged-source-panel");
+const uploadedSourcePanel = document.getElementById("uploaded-source-panel");
+const mergedSourceStatus = document.getElementById("merged-source-status");
+const prepareMergeLink = document.getElementById("prepare-merge-link");
 
 let generatedUrls = [];
 let generatedDownloadItems = [];
@@ -26,6 +32,7 @@ let clientesDepuradosBlob = null;
 let masterClientList = null;
 let masterFileData = null;
 let filteredMasterBlob = null;
+let filteredMasterFileName = null;
 
 fileInput.addEventListener("change", handleFileSelection);
 processButton.addEventListener("click", processSelectedFile);
@@ -37,7 +44,77 @@ masterClientsInput.addEventListener("change", handleMasterClientsSelection);
 masterFileInput.addEventListener("change", handleMasterFileSelection);
 filterMasterButton.addEventListener("click", handleFilterMasterFile);
 downloadFilteredButton.addEventListener("click", handleDownloadFilteredMaster);
+clientSourceInputs.forEach((input) => input.addEventListener("change", handleClientSourceChange));
+useMergedButton.addEventListener("click", () => {
+  document.querySelector('input[name="client-source"][value="merged"]').checked = true;
+  handleClientSourceChange();
+  navigateToModule("maestro");
+});
 initializeFilePickers();
+initializeNavigation();
+updateMergedSource(false);
+
+function initializeNavigation() {
+  document.querySelectorAll('a[href^="#"]').forEach((link) => {
+    const moduleId = link.getAttribute("href").slice(1);
+    if (!["dividir", "unir", "maestro"].includes(moduleId)) return;
+    link.addEventListener("click", (event) => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      navigateToModule(moduleId);
+    });
+  });
+  window.addEventListener("hashchange", focusModuleFromLocation);
+  window.addEventListener("popstate", focusModuleFromLocation);
+}
+
+function navigateToModule(moduleId) {
+  if (window.location.hash !== `#${moduleId}`) {
+    window.history.pushState(null, "", `#${moduleId}`);
+  }
+  focusModuleFromLocation();
+}
+
+function focusModuleFromLocation() {
+  const requested = window.location.hash.slice(1);
+  if (!["dividir", "unir", "maestro"].includes(requested)) return;
+  const heading = document.querySelector(`#${requested} h2`);
+  heading.focus({ preventScroll: true });
+  const position = heading.getBoundingClientRect();
+  if (position.top < 0 || position.bottom > window.innerHeight) {
+    heading.scrollIntoView({ block: "start", behavior: "instant" });
+  }
+}
+
+function usingMergedClients() {
+  return document.querySelector('input[name="client-source"]:checked').value === "merged";
+}
+
+function getActiveMasterClientList() {
+  if (!usingMergedClients()) return masterClientList;
+  return clientesDepurados ? { ...clientesDepurados, fileName: "Lista unida (módulo 2)" } : null;
+}
+
+function handleClientSourceChange() {
+  const useMerged = usingMergedClients();
+  mergedSourcePanel.hidden = !useMerged;
+  uploadedSourcePanel.hidden = useMerged;
+  resetFilteredMasterResults();
+  renderMasterSetupSummary();
+}
+
+function updateMergedSource(refreshMaster = true) {
+  const count = clientesDepurados?.values.length || 0;
+  useMergedButton.disabled = !count;
+  mergedSourceStatus.textContent = count
+    ? `${count.toLocaleString("es-CO")} clientes únicos listos para excluir.`
+    : "Une tus CSV para reutilizar la lista.";
+  prepareMergeLink.hidden = count > 0;
+  if (refreshMaster && usingMergedClients()) {
+    resetFilteredMasterResults();
+    renderMasterSetupSummary();
+  }
+}
 
 function initializeFilePickers() {
   const inputs = document.querySelectorAll("[data-file-summary]");
@@ -382,7 +459,6 @@ async function downloadAllFiles() {
 
 function handleClientCsvSelection() {
   resetClientResults();
-  resetFilteredMasterResults();
 
   if (!clientCsvInput.files.length) {
     mostrarMensajeResumen(clientsSummary, "No se han cargado archivos CSV de clientes.", "error");
@@ -402,7 +478,6 @@ function handleClientCsvSelection() {
 
 async function handleMergeClients() {
   resetClientResults();
-  resetFilteredMasterResults();
 
   if (!clientCsvInput.files.length) {
     mostrarMensajeResumen(clientsSummary, "Debes cargar al menos un CSV de clientes.", "error");
@@ -437,6 +512,7 @@ async function handleMergeClients() {
     ]);
     downloadClientsButton.disabled = false;
     renderClientSummary(clientesDepurados);
+    updateMergedSource();
   } catch (error) {
     clientesDepurados = null;
     mostrarMensajeResumen(clientsSummary, error.message || "No fue posible unir los CSV de clientes.", "error");
@@ -537,9 +613,13 @@ async function handleMasterFileSelection() {
 
 function handleFilterMasterFile() {
   resetFilteredMasterResults();
+  const activeClientList = getActiveMasterClientList();
 
-  if (!masterClientList || !masterClientList.keys.size) {
-    mostrarMensajeResumen(masterSummary, "Debes cargar la lista de clientes a eliminar.", "warning");
+  if (!activeClientList || !activeClientList.keys.size) {
+    const message = usingMergedClients()
+      ? "Une tus CSV en el módulo 2 o elige Subir archivo."
+      : "Carga una lista de clientes para excluir.";
+    mostrarMensajeResumen(masterSummary, message, "warning");
     return;
   }
 
@@ -551,11 +631,12 @@ function handleFilterMasterFile() {
   setMasterProcessingState(true, "Filtrando...");
 
   try {
-    const result = filtrarArchivoMaestro(masterFileData, masterClientList.keys);
+    const result = filtrarArchivoMaestro(masterFileData, activeClientList.keys);
     const rowsToDownload = masterFileData.header
       ? [masterFileData.header, ...result.remainingRows]
       : result.remainingRows;
     filteredMasterBlob = crearCsvBlob(rowsToDownload);
+    filteredMasterFileName = `${sanitizeFileBaseName(removeFileExtension(masterFileData.fileName))}_excluidos.csv`;
     downloadFilteredButton.disabled = false;
     renderMasterSummary(result);
   } catch (error) {
@@ -571,7 +652,7 @@ function handleDownloadFilteredMaster() {
     return;
   }
 
-  triggerDownload(filteredMasterBlob, "archivo_maestro_sin_clientes_excluidos.csv");
+  triggerDownload(filteredMasterBlob, filteredMasterFileName);
 }
 
 async function leerCSV(file) {
@@ -750,18 +831,19 @@ function renderMasterSummary(result) {
     ["Clientes encontrados", result.foundClientsCount],
     ["Filas eliminadas", result.removedRowsCount],
     ["Filas restantes", result.remainingRows.length],
-    ["Clientes no encontrados", result.notFoundClientsCount]
+    ["Clientes no encontrados", result.notFoundClientsCount],
+    ["Archivo de salida", filteredMasterFileName]
   ], [{ text: "Archivo maestro filtrado correctamente.", type: "success" }]);
 }
 
 function renderMasterSetupSummary(messages = []) {
   const items = [];
+  const activeClientList = getActiveMasterClientList();
 
-  if (masterClientList) {
+  if (activeClientList) {
     items.push(
-      ["Lista de clientes", masterClientList.fileName],
-      ["Clientes a eliminar", masterClientList.values.length],
-      ["Duplicados en lista", masterClientList.duplicateCount]
+      ["Lista de clientes", activeClientList.fileName],
+      ["Clientes a excluir", activeClientList.values.length]
     );
   }
 
@@ -774,7 +856,7 @@ function renderMasterSetupSummary(messages = []) {
   }
 
   if (!items.length) {
-    mostrarMensajeResumen(masterSummary, "Carga la lista de clientes y el archivo maestro para filtrar coincidencias.", "info");
+    mostrarMensajeResumen(masterSummary, "Elige una lista de clientes y carga tu maestro.", "info");
     return;
   }
 
@@ -790,6 +872,7 @@ function mostrarResumen(container, items, messages = []) {
 
     items.forEach(([label, value]) => {
       const item = document.createElement("li");
+      if (typeof value === "string") item.className = "summary-file";
       const labelSpan = document.createElement("span");
       const valueStrong = document.createElement("strong");
 
@@ -836,6 +919,7 @@ function resetClientResults() {
   clientesDepurados = null;
   clientesDepuradosBlob = null;
   downloadClientsButton.disabled = true;
+  updateMergedSource();
 }
 
 function resetMasterFileData() {
@@ -850,18 +934,23 @@ function resetMasterClientList() {
 
 function resetFilteredMasterResults() {
   filteredMasterBlob = null;
+  filteredMasterFileName = null;
   downloadFilteredButton.disabled = true;
 }
 
 function setClientProcessingState(isProcessing) {
   mergeClientsButton.disabled = isProcessing;
-  mergeClientsButton.textContent = isProcessing ? "Procesando..." : "Unir y quitar duplicados";
+  clientCsvInput.disabled = isProcessing;
+  mergeClientsButton.textContent = isProcessing ? "Uniendo..." : "Unir y depurar";
   downloadClientsButton.disabled = isProcessing || !clientesDepuradosBlob;
 }
 
 function setMasterProcessingState(isProcessing, processingText = "Procesando...") {
   filterMasterButton.disabled = isProcessing;
-  filterMasterButton.textContent = isProcessing ? processingText : "Eliminar clientes encontrados";
+  masterClientsInput.disabled = isProcessing;
+  masterFileInput.disabled = isProcessing;
+  clientSourceInputs.forEach((input) => { input.disabled = isProcessing; });
+  filterMasterButton.textContent = isProcessing ? processingText : "Excluir clientes";
   downloadFilteredButton.disabled = isProcessing || !filteredMasterBlob;
 }
 
@@ -895,20 +984,22 @@ function clearDownloads() {
   generatedUrls = [];
   generatedDownloadItems = [];
   generatedArchiveName = "archivos_csv.zip";
-  downloadsList.innerHTML = '<p class="empty-state">Los enlaces aparecerán aquí después del procesamiento.</p>';
+  downloadsList.innerHTML = '<p class="empty-state">Tus partes aparecerán aquí al dividir el archivo.</p>';
   downloadCount.textContent = "0 archivos";
   updateDownloadAllButton();
 }
 
 function setProcessingState(isProcessing) {
   processButton.disabled = isProcessing;
-  processButton.textContent = isProcessing ? "Procesando..." : "Procesar archivo";
+  fileInput.disabled = isProcessing;
+  rowsInput.disabled = isProcessing;
+  processButton.textContent = isProcessing ? "Dividiendo..." : "Dividir archivo";
   updateDownloadAllButton();
 }
 
 function setDownloadAllState(isDownloading) {
   downloadAllButton.dataset.loading = isDownloading ? "true" : "false";
-  downloadAllButton.textContent = isDownloading ? "Preparando ZIP..." : "Descargar todo";
+  downloadAllButton.textContent = isDownloading ? "Preparando ZIP..." : "Descargar ZIP";
   updateDownloadAllButton();
 }
 

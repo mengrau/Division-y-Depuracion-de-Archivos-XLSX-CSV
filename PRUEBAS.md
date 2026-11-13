@@ -1,5 +1,32 @@
 # PRUEBAS MANUALES
 
+## Suite de integracion en navegador
+
+Inicia `python -m http.server 8000` y abre `http://localhost:8000/tests/browser.html`.
+La suite ejecuta 18 escenarios con archivos sinteticos y dependencias reales de XLSX y ZIP:
+
+- Unir CSV con y sin encabezado y quitar duplicados.
+- Reutilizar la lista en el maestro sin subirla nuevamente.
+- Cargar una lista independiente y alternar entre ambas fuentes.
+- Invalidar resultados cuando cambia la fuente o el archivo maestro.
+- Cambiar los CSV unidos sin afectar un resultado basado en una lista independiente.
+- Filtrar maestros CSV/Excel, sin encabezado y con todas las filas excluidas.
+- Mantener nombre base, espacios y acentos al agregar `_excluidos.csv`.
+- Bloquear listas vacias, dividir archivos y crear ZIP.
+- Verificar favicon, navegacion, ausencia de blur y layout a 320, 390, 768 y 1280 px.
+- Mostrar Ir a Unir CSV solo en movil, mientras no haya una lista preparada.
+- Comprobar las mismas dimensiones, botones y resultados alineados en escritorio con ambas fuentes de clientes; en tablet, el maestro conserva el tamano de las otras cards.
+
+Los archivos de prueba se crean en memoria. Las descargas se capturan en la suite para inspeccionar sus nombres y contenido.
+
+## Revision visual y teclado
+
+- Revisar las tres cards simultaneas en escritorio, sin sidebar, y su distribucion en tablet y movil.
+- Navegar con Tab, activar botones con Enter y cambiar la fuente con las flechas del teclado.
+- Verificar que Usar en maestro e Ir a Unir CSV enfoquen la card correcta sin ocultar las otras.
+- En el modulo 3, comprobar ambas opciones de fuente y el nombre de salida mostrado.
+- Desplazarse por la pagina y por una lista larga de descargas; no debe haber fondos con blur ni animaciones de entrada.
+
 Estas pruebas validan la regla de encabezado aplicada a Excel y CSV:
 si el primer valor de la primera columna empieza por `1`, se procesa desde
 la primera fila; si no empieza por `1`, se omite la primera fila como
